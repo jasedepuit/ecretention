@@ -1,13 +1,68 @@
 [
   {
-    "id": "i1788231637962eio2",
-    "title": "Killing in the name of",
+    "id": "i1788232127340h6v6",
+    "title": "Montreal stickers (POD and bulk)",
     "active": false,
-    "description": "Saving everyone from deleting their accounts",
-    "impact": "high",
+    "description": "",
+    "impact": "low",
     "complexity": "low",
     "status": "planned",
     "notes": "",
-    "origin": "Chats with Chris"
+    "origin": ""
+  },
+  {
+    "id": "i1788232068657yusa",
+    "title": "Post-summit attendee survey",
+    "active": false,
+    "description": "",
+    "impact": "low",
+    "complexity": "low",
+    "status": "planned",
+    "notes": "",
+    "origin": ""
+  },
+  {
+    "id": "i17882321458231xyh",
+    "title": "Montreal merch social post",
+    "active": false,
+    "description": "",
+    "impact": "med",
+    "complexity": "low",
+    "status": "planned",
+    "notes": "",
+    "origin": ""
+  },
+  {
+    "id": "i17882321721568dgg",
+    "title": "EOI Takayama 2027 (social post and solo email)",
+    "active": false,
+    "description": "",
+    "impact": "med",
+    "complexity": "med",
+    "status": "planned",
+    "notes": "",
+    "origin": ""
+  },
+  {
+    "id": "i178823219195625y4",
+    "title": "Loops setup and testing",
+    "active": false,
+    "description": "",
+    "impact": "high",
+    "complexity": "high",
+    "status": "planned",
+    "notes": "",
+    "origin": ""
+  },
+  {
+    "id": "i1788232102957yyd7",
+    "title": "New base merch set in the store",
+    "active": false,
+    "description": "",
+    "impact": "med",
+    "complexity": "med",
+    "status": "planned",
+    "notes": "",
+    "origin": ""
   }
 ]
