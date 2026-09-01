@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EC Retention</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+  <style>
+    :root {
+      --orange: #FF6F42;
+      --orange-hover: #e55a2b;
+      --navy: #1a1a1a;
+      --text: #1a1f2e;
+      --secondary: #6b7280;
+      --bg: #f7f8fa;
+      --border: #eaecf0;
+      --white: #fff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Gate ──────────────────────────────────────────────── */
+    #gate { position: fixed; inset: 0; background: var(--navy); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    #gate.hidden { display: none; }
+    .gate-box { background: #242424; border-radius: 14px; padding: 44px 40px; width: 100%; max-width: 380px; text-align: center; }
+    .gate-logo { font-size: 18px; font-weight: 800; color: var(--orange); letter-spacing: -0.5px; margin-bottom: 4px; }
+    .gate-sub { font-size: 13px; color: #6b7280; margin-bottom: 32px; }
+    .gate-input { width: 100%; padding: 12px 14px; background: #1a1a1a; border: 1px solid #383838; border-radius: 8px; color: #fff; font-size: 15px; outline: none; margin-bottom: 10px; }
+    .gate-input:focus { border-color: var(--orange); }
+    .gate-btn { width: 100%; padding: 12px; background: var(--orange); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .gate-btn:hover { background: var(--orange-hover); }
+    .gate-err { color: #f87171; font-size: 13px; margin-top: 10px; display: none; }
+
+    /* ── Header ────────────────────────────────────────────── */
+    header { background: var(--navy); color: #fff; height: 60px; padding: 0 32px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+    .h-logo { font-size: 14px; font-weight: 800; color: var(--orange); letter-spacing: -0.3px; }
+    .h-div { width: 1px; height: 20px; background: rgba(255,255,255,0.18); }
+    header h1 { font-size: 14px; font-weight: 600; }
+    .h-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .btn { padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-primary { background: var(--orange); color: #fff; }
+    .btn-primary:hover { background: var(--orange-hover); }
+    .btn-ghost { background: rgba(255,255,255,0.1); color: #fff; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.16); }
+
+    .mode-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 10px; letter-spacing: 0.03em; }
+    .mode-view  { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+    .mode-admin { background: rgba(255,111,66,0.22); color: var(--orange); }
+
+    #publish-btn { transition: background 0.2s; }
+    #publish-btn.saving  { opacity: 0.65; pointer-events: none; }
+    #publish-btn.success { background: #22c55e !important; }
+    #publish-btn.err     { background: #ef4444 !important; }
+
+    /* ── Main ──────────────────────────────────────────────── */
+    main { max-width: 1060px; margin: 0 auto; padding: 28px 24px 80px; }
+    .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar-label { font-size: 13px; color: var(--secondary); }
+    .item-count { background: #e5e7eb; color: var(--secondary); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .filters { display: flex; gap: 6px; margin-left: auto; }
+    .chip { padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--secondary); }
+    .chip.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+    /* ── Pipeline list ─────────────────────────────────────── */
+    .pipeline { list-style: none; }
+    .p-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; padding: 11px 14px; gap: 10px; cursor: pointer; transition: box-shadow 0.12s, border-color 0.12s; position: relative; }
+    .p-item:hover { border-color: #cdd0d8; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .p-item.is-active { border-left: 3px solid var(--orange); padding-left: 11px; }
+    .p-item.sortable-ghost { opacity: 0.35; background: #f0f2f5; }
+    .p-item.sortable-chosen { box-shadow: 0 6px 20px rgba(0,0,0,0.12); border-color: #cdd0d8; }
+
+    .drag { color: #d1d5db; cursor: grab; flex-shrink: 0; font-size: 15px; padding: 2px 0; line-height: 1; }
+    .drag:active { cursor: grabbing; }
+    .rank { font-size: 11px; font-weight: 700; color: #d1d5db; width: 18px; text-align: right; flex-shrink: 0; }
+    .item-body { flex: 1; min-width: 0; }
+    .item-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+    .item-desc { font-size: 12px; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .badges { display: flex; gap: 5px; flex-shrink: 0; align-items: center; flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
+    .badge { font-size: 11px; font-weight: 500; padding: 3px 7px; border-radius: 4px; white-space: nowrap; }
+    .bi-high  { background: #fee2e2; color: #991b1b; }
+    .bi-med   { background: #fef3c7; color: #92400e; }
+    .bi-low   { background: #dcfce7; color: #166534; }
+    .bc-high  { background: #ede9fe; color: #5b21b6; }
+    .bc-med   { background: #e0f2fe; color: #075985; }
+    .bc-low   { background: #dcfce7; color: #166534; }
+    .bs-blocked { background: #fee2e2; color: #991b1b; }
+    .bs-parked  { background: #f3f4f6; color: #9ca3af; }
+    .bs-planned { display: none; }
+    .badge-active { background: var(--orange); color: #fff; }
+
+    .active-btn { background: none; border: 1px solid var(--border); cursor: pointer; color: #d1d5db; padding: 3px 7px; border-radius: 4px; font-size: 11px; font-weight: 500; flex-shrink: 0; white-space: nowrap; line-height: 1.4; transition: all 0.12s; }
+    .active-btn:hover { border-color: var(--orange); color: var(--orange); }
+    .active-btn.on { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+    .del-btn { background: none; border: none; cursor: pointer; color: #d1d5db; padding: 4px 6px; border-radius: 4px; font-size: 13px; flex-shrink: 0; }
+    .del-btn:hover { background: #fee2e2; color: #dc2626; }
+
+    .add-row { width: 100%; background: none; border: 2px dashed var(--border); border-radius: 8px; padding: 11px 16px; margin-top: 8px; display: flex; align-items: center; gap: 8px; color: var(--secondary); font-size: 13px; cursor: pointer; font-family: inherit; }
+    .add-row:hover { border-color: var(--orange); color: var(--orange); }
+
+    /* ── Modal ─────────────────────────────────────────────── */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .overlay.hidden { display: none; }
+    .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 600px; max-height: 88vh; overflow-y: auto; padding: 28px; }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+    .modal-title-input { font-size: 17px; font-weight: 700; color: var(--text); border: none; outline: none; width: 100%; border-bottom: 2px solid transparent; padding-bottom: 2px; background: transparent; }
+    .modal-title-input:focus { border-bottom-color: var(--orange); }
+    .close-btn { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 22px; line-height: 1; flex-shrink: 0; }
+    .close-btn:hover { color: var(--text); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .fg { display: flex; flex-direction: column; gap: 4px; }
+    .fg-full { margin-bottom: 16px; }
+    .fl { font-size: 10px; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+    .fsel, .fta, .fin { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: inherit; color: var(--text); outline: none; }
+    .fsel:focus, .fta:focus, .fin:focus { border-color: var(--orange); }
+    .fta { resize: vertical; min-height: 72px; }
+    .fin { width: 100%; }
+    .active-toggle-row { display: flex; align-items: center; gap: 10px; padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 16px; cursor: pointer; border: 1px solid var(--border); }
+    .active-toggle-row.toggled { background: #fff7f4; border-color: var(--orange); }
+    .active-toggle-row input[type=checkbox] { accent-color: var(--orange); width: 16px; height: 16px; cursor: pointer; }
+    .active-toggle-label { font-size: 13px; font-weight: 600; cursor: pointer; }
+    .active-toggle-sub { font-size: 12px; color: var(--secondary); margin-left: auto; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .btn-cancel { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--secondary); }
+    .btn-save { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: var(--orange); color: #fff; }
+    .btn-save:hover { background: var(--orange-hover); }
+
+    /* ── Read-only mode ────────────────────────────────────── */
+    body[data-mode="view"] .drag          { display: none !important; }
+    body[data-mode="view"] .active-btn    { display: none !important; }
+    body[data-mode="view"] .del-btn       { display: none !important; }
+    body[data-mode="view"] .add-row       { display: none !important; }
+    body[data-mode="view"] #admin-btns    { display: none !important; }
+    body[data-mode="view"] #publish-btn   { display: none !important; }
+    body[data-mode="view"] .p-item        { cursor: default; }
+    body[data-mode="view"] .modal-title-input { pointer-events: none; }
+    body[data-mode="view"] .fsel,
+    body[data-mode="view"] .fta,
+    body[data-mode="view"] .fin           { pointer-events: none; background: #f9fafb; color: #374151; }
+    body[data-mode="view"] .btn-save      { display: none !important; }
+    body[data-mode="view"] .active-toggle-row { pointer-events: none; opacity: 0.75; }
+
+    @media (max-width: 600px) {
+      header { padding: 0 16px; }
+      main { padding: 20px 12px 60px; }
+      .form-row { grid-template-columns: 1fr; }
+      .badges { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Gate ─────────────────────────────────────────────────── -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-logo">Escape Collective</div>
+    <div class="gate-sub" id="gate-sub">EC Retention · Internal</div>
+
+    <!-- Screen 1: password -->
+    <div id="gate-pw-screen">
+      <input type="password" id="gate-pw" class="gate-input" placeholder="Password" />
+      <button class="gate-btn" onclick="checkPw()">Enter →</button>
+      <div class="gate-err" id="gate-err">Incorrect password</div>
+    </div>
+
+    <!-- Screen 2: PAT (admin first run only) -->
+    <div id="gate-pat-screen" style="display:none">
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:16px;text-align:left;line-height:1.5">
+        Enter your GitHub token to enable publishing.<br>
+        It's stored only on this device.
+      </div>
+      <input type="password" id="gate-token" class="gate-input" placeholder="github_pat_…" />
+      <button class="gate-btn" onclick="savePat()">Continue →</button>
+      <div class="gate-err" id="gate-pat-err">Token can't be empty</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── App ──────────────────────────────────────────────────── -->
+<header>
+  <span class="h-logo">Escape Collective</span>
+  <div class="h-div"></div>
+  <h1 id="h-title">EC Retention</h1>
+  <span class="mode-badge" id="mode-badge" style="display:none"></span>
+  <div class="h-actions">
+    <button class="btn btn-ghost" id="switch-btn" onclick="signOut()" style="display:none;font-size:12px;opacity:0.65">Switch</button>
+    <button class="btn btn-ghost" onclick="exportData()">Export</button>
+    <div id="admin-btns" style="display:flex;gap:8px">
+      <label class="btn btn-ghost" style="cursor:pointer">
+        Import
+        <input type="file" id="imp" accept=".json" onchange="importData(event)" style="display:none">
+      </label>
+      <button class="btn btn-ghost" onclick="openAdd()">+ Add item</button>
+    </div>
+    <button class="btn btn-primary" id="publish-btn" onclick="publishData()">Publish</button>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <span class="toolbar-label" id="toolbar-label">Loading…</span>
+    <span class="item-count" id="count">0 items</span>
+    <div class="filters">
+      <span class="chip active" onclick="setFilter(this,'all')">All</span>
+      <span class="chip" onclick="setFilter(this,'active')">Active</span>
+      <span class="chip" onclick="setFilter(this,'blocked')">Blocked</span>
+      <span class="chip" onclick="setFilter(this,'parked')">Parked</span>
+    </div>
+  </div>
+  <ul class="pipeline" id="list"></ul>
+  <button class="add-row" onclick="openAdd()">＋ Add a feature</button>
+</main>
+
+<!-- ── Modal ────────────────────────────────────────────────── -->
+<div class="overlay hidden" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <input class="modal-title-input" id="m-title" placeholder="Feature title" />
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <label class="active-toggle-row" id="active-row" onclick="toggleActiveRow()">
+      <input type="checkbox" id="m-active" onclick="event.stopPropagation()" onchange="syncActiveRow()" />
+      <span class="active-toggle-label">Mark as active</span>
+      <span class="active-toggle-sub">Currently in progress</span>
+    </label>
+    <div class="fg-full">
+      <div class="fl">Description</div>
+      <textarea class="fta" id="m-desc" placeholder="What does this deliver?"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="fg">
+        <label class="fl">Impact</label>
+        <select class="fsel" id="m-impact">
+          <option value="high">High</option>
+          <option value="med" selected>Med</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Complexity</label>
+        <select class="fsel" id="m-complexity">
+          <option value="low">Low</option>
+          <option value="med" selected>Med</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg">
+        <label class="fl">Status</label>
+        <select class="fsel" id="m-status">
+          <option value="planned">Planned</option>
+          <option value="blocked">Blocked</option>
+          <option value="parked">Parked</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Origin</label>
+        <input class="fin" id="m-origin" placeholder="e.g. Q3 idea, stakeholder request…" style="height:37px" />
+      </div>
+    </div>
+    <div class="fg-full">
+      <div class="fl">Notes &amp; dependencies</div>
+      <textarea class="fta" id="m-notes" placeholder="Context, dependencies, open questions..."></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG — fill these in before deploying
+// ════════════════════════════════════════════════════════════════
+const CONFIG = {
+  title:         'EC Retention',          // Page title
+  viewPassword:  'ec-view',        // Read-only password
+  adminPassword: 'escape26 ',       // Admin password
+  github: {
+    token:    '',                          // Leave blank — entered on first admin login
+    owner:    'jasedepuit',                          // GitHub username
+    repo:     'ecretention',                          // Repository name
+    branch:   'main',
+    dataFile: 'pipeline-data.json'
+  }
+};
+// ════════════════════════════════════════════════════════════════
+
+// Empty seed — start fresh
+const SEED = [];
+
+// ── State ────────────────────────────────────────────────────
+let items  = [];
+let mode   = null;
+let editId = null;
+let filter = 'all';
+let didDrag = false;
+
+// Storage keys (namespaced to avoid collisions if both pipelines open)
+const STORE     = 'ec_retention_v1';
+const TOKEN_KEY = 'ec_gh_token_retention';
+const MODE_KEY  = 'ec_retention_mode';
+
+// ── Boot ─────────────────────────────────────────────────────
+(function boot() {
+  document.title = CONFIG.title;
+  document.getElementById('h-title').textContent = CONFIG.title;
+  document.getElementById('gate-sub').textContent = CONFIG.title + ' · Internal';
+  mode = sessionStorage.getItem(MODE_KEY);
+  if (mode === 'view' || mode === 'admin') {
+    document.getElementById('gate').classList.add('hidden');
+    init();
+  }
+})();
+
+// ── Auth ─────────────────────────────────────────────────────
+function getToken() {
+  return CONFIG.github.token || localStorage.getItem(TOKEN_KEY) || '';
+}
+
+function checkPw() {
+  const val = document.getElementById('gate-pw').value;
+  const err = document.getElementById('gate-err');
+  if (val === CONFIG.adminPassword)     { mode = 'admin'; }
+  else if (val === CONFIG.viewPassword) { mode = 'view';  }
+  else {
+    err.style.display = 'block';
+    document.getElementById('gate-pw').value = '';
+    document.getElementById('gate-pw').focus();
+    return;
+  }
+  err.style.display = 'none';
+  if (mode === 'admin' && !getToken()) {
+    document.getElementById('gate-pw-screen').style.display = 'none';
+    document.getElementById('gate-pat-screen').style.display = '';
+    document.getElementById('gate-token').focus();
+    return;
+  }
+  sessionStorage.setItem(MODE_KEY, mode);
+  document.getElementById('gate').classList.add('hidden');
+  init();
+}
+document.getElementById('gate-pw').addEventListener('keydown', e => { if (e.key === 'Enter') checkPw(); });
+
+function savePat() {
+  const val = document.getElementById('gate-token').value.trim();
+  if (!val) { document.getElementById('gate-pat-err').style.display = 'block'; return; }
+  localStorage.setItem(TOKEN_KEY, val);
+  sessionStorage.setItem(MODE_KEY, mode);
+  document.getElementById('gate').classList.add('hidden');
+  init();
+}
+document.getElementById('gate-token').addEventListener('keydown', e => { if (e.key === 'Enter') savePat(); });
+
+function signOut() {
+  sessionStorage.removeItem(MODE_KEY);
+  mode = null;
+  document.getElementById('gate-pw-screen').style.display = '';
+  document.getElementById('gate-pat-screen').style.display = 'none';
+  document.getElementById('gate-pw').value = '';
+  document.getElementById('gate-err').style.display = 'none';
+  document.getElementById('gate').classList.remove('hidden');
+}
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  document.body.setAttribute('data-mode', mode);
+  const badge = document.getElementById('mode-badge');
+  badge.style.display = '';
+  badge.textContent = mode === 'admin' ? 'Admin' : 'Read only';
+  badge.className = 'mode-badge ' + (mode === 'admin' ? 'mode-admin' : 'mode-view');
+  document.getElementById('toolbar-label').textContent =
+    mode === 'admin' ? 'Priority order — drag to reorder' : 'Priority order';
+  document.getElementById('switch-btn').style.display = '';
+  await loadData();
+  render();
+}
+
+// ── GitHub helpers ───────────────────────────────────────────
+function ghReadable() { const gh = CONFIG.github; return !!(gh.owner && gh.repo); }
+function ghWritable()  { return !!(getToken() && CONFIG.github.owner && CONFIG.github.repo); }
+function ghApiUrl()    { const { owner, repo, dataFile } = CONFIG.github; return `https://api.github.com/repos/${owner}/${repo}/contents/${dataFile}`; }
+function ghHeaders()   { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+
+async function loadFromGitHub() {
+  const { owner, repo, branch } = CONFIG.github;
+  if (!owner || !repo) return null;
+  try {
+    const url = `${ghApiUrl()}?ref=${branch}&_=${Date.now()}`;
+    const headers = { 'Accept': 'application/vnd.github.v3+json' };
+    const token = getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const r = await fetch(url, { headers, cache: 'no-store' });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const binary = atob(d.content.replace(/\s/g, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch { return null; }
+}
+
+async function writeToGitHub() {
+  const enc = new TextEncoder();
+  const bytes = enc.encode(JSON.stringify(items, null, 2));
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  const content = btoa(binary);
+
+  let sha = null;
+  try {
+    const r = await fetch(`${ghApiUrl()}?ref=${CONFIG.github.branch}`, { headers: ghHeaders() });
+    if (r.ok) { const d = await r.json(); sha = d.sha; }
+  } catch {}
+
+  const body = { message: 'Update pipeline data', content, branch: CONFIG.github.branch };
+  if (sha) body.sha = sha;
+
+  const r = await fetch(ghApiUrl(), { method: 'PUT', headers: ghHeaders(), body: JSON.stringify(body) });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error ${r.status}`);
+  }
+}
+
+// ── Data load / save ─────────────────────────────────────────
+async function loadData() {
+  if (mode === 'admin') {
+    try {
+      const s = localStorage.getItem(STORE);
+      if (s) { items = JSON.parse(s); return; }
+    } catch {}
+  }
+  if (ghReadable()) {
+    const data = await loadFromGitHub();
+    if (data) { items = data; return; }
+  }
+  items = SEED.map(i => ({...i}));
+}
+
+function saveLocal() {
+  if (mode === 'admin') localStorage.setItem(STORE, JSON.stringify(items));
+}
+
+async function publishData() {
+  const btn = document.getElementById('publish-btn');
+  if (!ghWritable()) {
+    saveLocal();
+    btn.textContent = 'Saved locally ✓';
+    btn.classList.add('success');
+    setTimeout(() => { btn.textContent = 'Publish'; btn.classList.remove('success'); }, 2200);
+    return;
+  }
+  btn.textContent = 'Saving…'; btn.classList.add('saving');
+  try {
+    await writeToGitHub();
+    saveLocal();
+    btn.textContent = 'Published ✓'; btn.classList.remove('saving'); btn.classList.add('success');
+    setTimeout(() => { btn.textContent = 'Publish'; btn.classList.remove('success'); }, 2500);
+  } catch (e) {
+    console.error(e);
+    btn.textContent = 'Error — try again'; btn.classList.remove('saving'); btn.classList.add('err');
+    setTimeout(() => { btn.textContent = 'Publish'; btn.classList.remove('err'); }, 3000);
+  }
+}
+
+function uid() { return 'i' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+// ── Render ───────────────────────────────────────────────────
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function impactLabel(v) { return { high:'↑ High', med:'~ Med', low:'↓ Low' }[v] || v; }
+
+function getVisible() {
+  if (filter === 'all')    return items;
+  if (filter === 'active') return items.filter(i => i.active);
+  return items.filter(i => i.status === filter);
+}
+
+function render() {
+  const visible = getVisible();
+  document.getElementById('count').textContent = visible.length + ' item' + (visible.length !== 1 ? 's' : '');
+  document.getElementById('list').innerHTML = visible.map((item, idx) => `
+    <li class="p-item${item.active ? ' is-active' : ''}" data-id="${esc(item.id)}" onclick="itemClick(event,'${esc(item.id)}')">
+      <span class="drag" title="Drag to reorder">⠿</span>
+      <span class="rank">${idx + 1}</span>
+      <div class="item-body">
+        <div class="item-title">${esc(item.title)}</div>
+        <div class="item-desc">${esc(item.description)}</div>
+      </div>
+      <div class="badges">
+        ${item.active ? '<span class="badge badge-active">● Active</span>' : ''}
+        <span class="badge bi-${item.impact}">Impact: ${impactLabel(item.impact)}</span>
+        <span class="badge bc-${item.complexity}">Complexity: ${cap(item.complexity)}</span>
+        <span class="badge bs-${item.status}">${cap(item.status)}</span>
+      </div>
+      <button class="active-btn${item.active ? ' on' : ''}" onclick="toggleActive(event,'${esc(item.id)}')">${item.active ? '● Active' : '○'}</button>
+      <button class="del-btn" onclick="deleteItem(event,'${esc(item.id)}')" title="Remove">✕</button>
+    </li>
+  `).join('');
+  if (mode === 'admin') initSortable(visible);
+}
+
+let _sortable = null;
+function initSortable(visible) {
+  if (_sortable) { _sortable.destroy(); _sortable = null; }
+  _sortable = Sortable.create(document.getElementById('list'), {
+    animation: 140, handle: '.drag',
+    ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+    onStart: () => { didDrag = false; },
+    onMove:  () => { didDrag = true; },
+    onEnd(evt) {
+      if (evt.oldIndex === evt.newIndex) { didDrag = false; return; }
+      const movedItem  = visible[evt.oldIndex];
+      const targetItem = visible[evt.newIndex];
+      const fromIdx = items.indexOf(movedItem);
+      const toIdx   = items.indexOf(targetItem);
+      items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, movedItem);
+      saveLocal(); render();
+      setTimeout(() => { didDrag = false; }, 50);
+    }
+  });
+}
+
+function itemClick(e, id) {
+  if (didDrag) return;
+  if (e.target.classList.contains('drag') || e.target.classList.contains('del-btn') || e.target.classList.contains('active-btn')) return;
+  openEdit(id);
+}
+
+function toggleActive(e, id) {
+  e.stopPropagation();
+  const item = items.find(i => i.id === id); if (!item) return;
+  item.active = !item.active;
+  saveLocal(); render();
+}
+
+function setFilter(el, f) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active'); filter = f; render();
+}
+
+function syncActiveRow() {
+  document.getElementById('active-row').classList.toggle('toggled', document.getElementById('m-active').checked);
+}
+function toggleActiveRow() { const cb = document.getElementById('m-active'); cb.checked = !cb.checked; syncActiveRow(); }
+
+function openAdd() {
+  editId = null;
+  ['m-title','m-desc','m-notes','m-origin'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('m-active').checked = false;
+  document.getElementById('m-impact').value = 'med';
+  document.getElementById('m-complexity').value = 'med';
+  document.getElementById('m-status').value = 'planned';
+  syncActiveRow();
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('m-title').focus();
+}
+
+function openEdit(id) {
+  const item = items.find(i => i.id === id); if (!item) return;
+  editId = id;
+  document.getElementById('m-title').value      = item.title;
+  document.getElementById('m-active').checked   = !!item.active;
+  document.getElementById('m-desc').value       = item.description;
+  document.getElementById('m-impact').value     = item.impact;
+  document.getElementById('m-complexity').value = item.complexity;
+  document.getElementById('m-status').value     = item.status;
+  document.getElementById('m-notes').value      = item.notes || '';
+  document.getElementById('m-origin').value     = item.origin || '';
+  syncActiveRow();
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('m-title').focus();
+}
+
+function closeModal() { document.getElementById('overlay').classList.add('hidden'); editId = null; }
+function overlayClick(e) { if (e.target.id === 'overlay') closeModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function saveModal() {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) { document.getElementById('m-title').focus(); return; }
+  const d = {
+    title, active: document.getElementById('m-active').checked,
+    description: document.getElementById('m-desc').value.trim(),
+    impact:      document.getElementById('m-impact').value,
+    complexity:  document.getElementById('m-complexity').value,
+    status:      document.getElementById('m-status').value,
+    notes:       document.getElementById('m-notes').value.trim(),
+    origin:      document.getElementById('m-origin').value.trim(),
+  };
+  if (editId) {
+    const i = items.findIndex(x => x.id === editId);
+    if (i !== -1) items[i] = { ...items[i], ...d };
+  } else { items.push({ id: uid(), ...d }); }
+  saveLocal(); closeModal(); render();
+}
+
+function deleteItem(e, id) {
+  e.stopPropagation();
+  if (!confirm('Remove this item?')) return;
+  items = items.filter(i => i.id !== id);
+  saveLocal(); render();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ec-retention-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      items = data; saveLocal(); render();
+    } catch { alert('Could not read that file.'); }
+  };
+  reader.readAsText(file); e.target.value = '';
+}
+</script>
+</body>
+</html>
