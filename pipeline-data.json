@@ -2,7 +2,7 @@
   {
     "id": "i1788232127340h6v6",
     "title": "Montreal stickers (POD and bulk)",
-    "active": false,
+    "active": true,
     "description": "",
     "impact": "low",
     "complexity": "low",
@@ -13,7 +13,7 @@
   {
     "id": "i1788232068657yusa",
     "title": "Post-summit attendee survey",
-    "active": false,
+    "active": true,
     "description": "",
     "impact": "low",
     "complexity": "low",
@@ -24,7 +24,7 @@
   {
     "id": "i17882321458231xyh",
     "title": "Montreal merch social post",
-    "active": false,
+    "active": true,
     "description": "",
     "impact": "med",
     "complexity": "low",
@@ -35,7 +35,7 @@
   {
     "id": "i17882321721568dgg",
     "title": "EOI Takayama 2027 (social post and solo email)",
-    "active": false,
+    "active": true,
     "description": "",
     "impact": "med",
     "complexity": "med",
@@ -61,6 +61,17 @@
     "description": "",
     "impact": "med",
     "complexity": "med",
+    "status": "planned",
+    "notes": "",
+    "origin": ""
+  },
+  {
+    "id": "i17882323109543wt5",
+    "title": "Industry program hand-off",
+    "active": false,
+    "description": "",
+    "impact": "low",
+    "complexity": "low",
     "status": "planned",
     "notes": "",
     "origin": ""
